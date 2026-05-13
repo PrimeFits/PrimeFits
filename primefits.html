@@ -286,8 +286,88 @@ function toggleWishlist(id,e) { e.stopPropagation(); let idx = wishlist.indexOf(
 function updateWishlistCount() { document.getElementById('wishlistCount').textContent = wishlist.length; }
 function openWishlistModal() { let wp = products.filter(p=>wishlist.includes(p.id)); document.getElementById('wishlistBody').innerHTML = wp.length ? `<div class="grid-4">${wp.map(p=>`<div class="product-card" onclick="openModal(${p.id});closeWishlistModal()">${cardInner(p)}</div>`).join('')}</div>` : '<div class="empty-cart">Geen favorieten</div>'; document.getElementById('wishlistModal').classList.add('open'); }
 function closeWishlistModal() { document.getElementById('wishlistModal').classList.remove('open'); }
-function openAuthModal() { alert('Demo – registratie niet actief'); }
-function closeAuthModal() {}
+function openAuthModal() {
+  const user = JSON.parse(localStorage.getItem('primefits_user') || 'null');
+  const body = document.getElementById('authBody');
+  if (user) {
+    body.innerHTML = `
+      <div style="text-align:center; padding:10px">
+        <div style="font-size:40px; margin-bottom:10px">👤</div>
+        <div style="font-size:18px; font-weight:700; margin-bottom:4px">${user.name}</div>
+        <div style="color:#888; font-size:13px; margin-bottom:20px">${user.email}</div>
+        <button class="btn-primary" style="width:100%; margin-bottom:10px" onclick="window.location.href='admin.html'">⚙️ Admin Panel</button>
+        <button class="btn-outline" style="width:100%; padding:10px" onclick="logoutUser()">🚪 Uitloggen</button>
+      </div>`;
+  } else {
+    body.innerHTML = `
+      <div id="authTabs" style="display:flex; gap:0; margin-bottom:20px; border-bottom:1px solid #222">
+        <button onclick="showAuthTab('login')" id="tab-login" style="flex:1; padding:10px; background:transparent; border:none; color:#00ff87; font-family:Barlow Condensed,sans-serif; font-weight:800; font-size:14px; letter-spacing:1px; border-bottom:2px solid #00ff87; cursor:pointer">INLOGGEN</button>
+        <button onclick="showAuthTab('register')" id="tab-register" style="flex:1; padding:10px; background:transparent; border:none; color:#888; font-family:Barlow Condensed,sans-serif; font-weight:800; font-size:14px; letter-spacing:1px; border-bottom:2px solid transparent; cursor:pointer">REGISTREREN</button>
+      </div>
+      <div id="auth-login">
+        <div class="form-group"><input class="form-input" id="loginEmail" type="email" placeholder="E-mailadres"></div>
+        <div class="form-group"><input class="form-input" id="loginPassword" type="password" placeholder="Wachtwoord"></div>
+        <div id="loginMsg" style="font-size:12px; margin-bottom:10px"></div>
+        <button class="btn-primary" style="width:100%; padding:12px" onclick="doLogin()">Inloggen →</button>
+      </div>
+      <div id="auth-register" style="display:none">
+        <div class="form-group"><input class="form-input" id="regName" placeholder="Naam"></div>
+        <div class="form-group"><input class="form-input" id="regEmail" type="email" placeholder="E-mailadres"></div>
+        <div class="form-group"><input class="form-input" id="regPassword" type="password" placeholder="Wachtwoord (min. 6 tekens)"></div>
+        <div id="registerMsg" style="font-size:12px; margin-bottom:10px"></div>
+        <button class="btn-primary" style="width:100%; padding:12px" onclick="doRegister()">Account aanmaken →</button>
+      </div>`;
+  }
+  document.getElementById('authModal').classList.add('open');
+}
+
+function showAuthTab(tab) {
+  document.getElementById('auth-login').style.display = tab === 'login' ? 'block' : 'none';
+  document.getElementById('auth-register').style.display = tab === 'register' ? 'block' : 'none';
+  document.getElementById('tab-login').style.color = tab === 'login' ? '#00ff87' : '#888';
+  document.getElementById('tab-login').style.borderBottomColor = tab === 'login' ? '#00ff87' : 'transparent';
+  document.getElementById('tab-register').style.color = tab === 'register' ? '#00ff87' : '#888';
+  document.getElementById('tab-register').style.borderBottomColor = tab === 'register' ? '#00ff87' : 'transparent';
+}
+
+function doLogin() {
+  const email = document.getElementById('loginEmail').value.trim();
+  const pw = document.getElementById('loginPassword').value;
+  const msg = document.getElementById('loginMsg');
+  const users = JSON.parse(localStorage.getItem('primefits_users') || '[]');
+  const user = users.find(u => u.email === email && u.password === pw);
+  if (!user) { msg.innerHTML = '<span style="color:#ff3b3b">❌ Onjuist e-mailadres of wachtwoord</span>'; return; }
+  localStorage.setItem('primefits_user', JSON.stringify(user));
+  closeAuthModal();
+  showToast('Welkom terug, ' + user.name + '!');
+  // update knop
+  document.getElementById('authModal').classList.remove('open');
+}
+
+function doRegister() {
+  const name = document.getElementById('regName').value.trim();
+  const email = document.getElementById('regEmail').value.trim();
+  const pw = document.getElementById('regPassword').value;
+  const msg = document.getElementById('registerMsg');
+  if (!name || !email || !pw) { msg.innerHTML = '<span style="color:#ff3b3b">❌ Vul alle velden in</span>'; return; }
+  if (pw.length < 6) { msg.innerHTML = '<span style="color:#ff3b3b">❌ Wachtwoord minimaal 6 tekens</span>'; return; }
+  const users = JSON.parse(localStorage.getItem('primefits_users') || '[]');
+  if (users.find(u => u.email === email)) { msg.innerHTML = '<span style="color:#ff3b3b">❌ E-mailadres al in gebruik</span>'; return; }
+  const newUser = { name, email, password: pw };
+  users.push(newUser);
+  localStorage.setItem('primefits_users', JSON.stringify(users));
+  localStorage.setItem('primefits_user', JSON.stringify(newUser));
+  closeAuthModal();
+  showToast('Account aangemaakt! Welkom, ' + name + '!');
+}
+
+function logoutUser() {
+  localStorage.removeItem('primefits_user');
+  closeAuthModal();
+  showToast('Uitgelogd');
+}
+
+function closeAuthModal() { document.getElementById('authModal').classList.remove('open'); }
 function toggleCart() { document.getElementById('cartPanel').classList.toggle('open'); }
 function updateCartUI() {
   let count = cart.length;
